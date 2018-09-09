@@ -9,6 +9,9 @@ import java.nio.channels.ClosedChannelException;
 The user runing this class must be a memvber of the group dialup.
 Connect to the bitalino using the bluetooth GUI for your system
 Make a note of what /dev port it attached to
+
+from https://makezine.com/projects/use-bitalino-graph-biosignals-play-pong/
+edwindertien.nl
 */
 
 public class Bitalino {
