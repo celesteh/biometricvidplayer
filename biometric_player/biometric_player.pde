@@ -1,77 +1,77 @@
 import processing.video.*;
+//import javax.bluetooth.*;
 
-Movie myMovie;
-//Rectangle monitor;
+
+FilmSwitcher myMovie;
 double start_time;
 
-Bitalino bit;
+BitReader bit;
+
+int w, h;
 
 // bitalino
 
 
 void setup() {
-  size(200, 200);
+  background(0);
 
-  bit = new Bitalino(this);
-  bit.getPorts();
-
-    /*
-  GraphicsDevice gd;
-
-  GraphicsEnvironment ge = GraphicsEnvironment.getLocalGraphicsEnvironment();
-  GraphicsDevice[] gs = ge.getScreenDevices();
-  // gs[1] gets the *second* screen. gs[0] would get the primary screen
-  if (gs.length > 1) {
-    gd = gs[1];
-  } else {
-    gd = gs[0];
-  }
-
-  //GraphicsConfiguration[] gc = gs[0].getDefaultConfiguration();//getConfigurations();
-
-  monitor = new Rectangle();
-  monitor = gs[0].getDefaultConfiguration().getBounds();//gc[0].getBounds();
-
-  //frame.setLocation((int)(monitor.width / 2), (int)(monitor.height / 2));
-  //frame.setLocation((int)(monitor.x + (monitor.width / 2)),
-  //                  (int)(monitor.y +(monitor.height / 2)));
-  frame.setLocation((int) monitor.x, (int) monitor.y);
-  frame.setAlwaysOnTop(true);
-
-  GraphicsConfiguration grc = gd.getDefaultConfiguration();
-  javax.swing.JFrame f = new javax.swing.JFrame(/*"Score"*//*grc);
-  f.removeNotify();
-  f.setUndecorated(true);
-  f.addNotify();
-  f.add(viewer);
-
-  int xoffs = grc.getBounds().x;
-  int yoffs = grc.getBounds().y;
-  f.setLocation(xoffs, yoffs);
-
-  f.pack();
-  f.setVisible(true);
-  background(1);
-  */
+  //this.setupBitalino();
 
 
-  myMovie = new Movie(this, /*dataPath("") ++*/ "DRAFT_JERWOOD_04.09.18.mp4");
+  fullScreen(2);
+  w = width;
+  h = height;
+  System.out.println(w);
+  System.out.println(h);
+ 
+
+  myMovie = new FilmSwitcher(this, /*dataPath("") ++*/ "DRAFT_JERWOOD_04.09.18.mp4", bit);
+  //frameRate(24);
   myMovie.play();
+  //bit.shouldStop();
 }
 
 void draw() {
-  image(myMovie, 0, 0);
+  /*
+  PImage img;
+  img = myMovie.getActive().get();
+  img.resize(w,h);
+  image(img,0,0);*/
+  
+  myMovie.read();
+  image(myMovie.getActive(), 0, 0, w, h);
+  //image(myMovie.getActive(), 0, 0);
 }
 
 void movieEvent(Movie m) {
-  m.read();
+  //System.out.print("Event ");
+  //m.read();
+  myMovie.read();
 }
 
+void setupBitalino() {
 
+  bit = new BitReader(/*this*/);
 
-/*
-  public java.awt.Dimension getPreferredSize() {
+  delay(7 * 1000); // 15 seconds
 
-    return new java.awt.Dimension(monitor.width, monitor. height);
+  for (int i=0; (i<4 && (! bit.isPaired())); i++) {
+    try {
+      bit.pair();
+    } 
+    catch (Exception e) {
+      System.out.println("waiting...");
+      delay(7 * 1000);
+    }
   }
- */
+  delay(5);
+  //bit.getPorts();
+
+  try {
+    bit.open();
+    System.out.println("Success!");
+  } 
+  catch (Exception e) {
+    System.out.println("Failure!");
+  }
+}
