@@ -9,6 +9,22 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+import java.awt.GridBagConstraints;
+import java.awt.GridBagLayout;
+import java.awt.Insets;
+
+import javax.swing.BorderFactory;
+import javax.swing.JButton;
+import javax.swing.JFrame;
+import javax.swing.JLabel;
+import javax.swing.JPanel;
+import javax.swing.JPasswordField;
+import javax.swing.JTextField;
+import javax.swing.SwingUtilities;
+import javax.swing.UIManager;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+
 
 public class BiometricController {
 
@@ -17,12 +33,14 @@ public class BiometricController {
   biometric_player app;
   int breakcounter;
   Vector breakPoints;
+  ControllerPanel gui;
 
   public BiometricController(biometric_player owner) {
     app = owner;
     prop = new Properties();
     breakcounter = 0;
     breakPoints = new Vector(2);
+    gui = new ControllerPanel(this);
   }
 
   public BiometricController(biometric_player owner, String filePath) {
@@ -40,7 +58,7 @@ public class BiometricController {
       //System.out.println("loader "+loader);
       //inputStream = getClass().getClassLoader().getResourceAsStream(path);
       //inputStream = loader.getResourceAsStream(path);
-      
+
       inputStream = new FileInputStream(path);
       System.out.println("stream "+inputStream);
 
@@ -86,6 +104,11 @@ public class BiometricController {
   public void stop() {
     app.fadeOut();
   }
+  
+  public void ready() {
+    
+    gui.ready();
+  }
 
   public BreakPoint[] loadBreakPoints() {
     String key;
@@ -124,7 +147,7 @@ public class BiometricController {
     //keyarr = new String[keys.size()];
 
     for (int i =0; i < keys.size(); i++) {
-      pointarr[i] = new BreakPoint((String) keys.elementAt(i));
+      pointarr[i] = new BreakPoint(prop.getProperty((String) keys.elementAt(i)));
     }
 
     Arrays.sort(pointarr);
@@ -161,12 +184,90 @@ public class BiometricController {
     }
     return point;
   }
+
+  public BreakPoint getFirstBreakPoint() {
+    BreakPoint point=null;
+
+    if (breakPoints.size() > 0) {
+      point = (BreakPoint) breakPoints.elementAt(0);
+    }
+
+    //if ( point != null) {
+    //  System.out.println(point.getTime());
+    //}
+    return point;
+  }
 }
 
 
-public class ControllerPanel /*extends JPanel*/ {
+public class ControllerPanel extends JFrame {
 
   BiometricController parent;
+  JButton startbutton;
+  JButton stopbutton;
+
+  public ControllerPanel(BiometricController controller) {
+    
+    System.out.println("gui constructor");
+    parent = controller;
+    startbutton = new JButton("Start");
+    startbutton.setActionCommand("start");
+    startbutton.setEnabled(false);
+   stopbutton = new JButton("Stop");
+    stopbutton.setActionCommand("stop");
+    stopbutton.setEnabled(false);
+
+    JPanel newPanel = new JPanel(new GridBagLayout());
+
+    GridBagConstraints constraints = new GridBagConstraints();
+    constraints.anchor = GridBagConstraints.WEST;
+    constraints.insets = new Insets(10, 10, 10, 10);
+
+    // add components to the panel
+    constraints.gridx = 0;
+    constraints.gridy = 0;   
+    newPanel.add(startbutton, constraints);
+
+    constraints.gridx = 1;
+    newPanel.add(stopbutton, constraints);
+
+    // set border for the panel
+    newPanel.setBorder(BorderFactory.createTitledBorder(
+      BorderFactory.createEtchedBorder(), "Biometric Player"));
+
+    // add the panel to this frame
+    add(newPanel);
+
+    pack();
+    setLocationRelativeTo(null);
+    this.setVisible(true);
+  }
+
+  public void play() {
+    startbutton.setEnabled(false);
+    stopbutton.setEnabled(true);
+  }
+
+  public void stop() {
+    startbutton.setEnabled(true);
+    stopbutton.setEnabled(false);
+  }
+  
+  public void ready() {
+    stop();
+  }
+
+  public void actionPerformed(ActionEvent e) {
+    if ("play".equals(e.getActionCommand())) {
+      parent.start();
+      play();
+    } else {
+      if ("stop".equals(e.getActionCommand())) {
+        parent.stop();
+        stop();
+      }
+    }
+  }
 }
 
 

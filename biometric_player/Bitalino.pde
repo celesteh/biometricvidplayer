@@ -95,8 +95,6 @@ public class RemoteDeviceDiscovery {
 
 public class BitReader  extends Thread {
 
-  //private static final Logger logger = Logger.getLogger(BITalinoExample.class
-  // .getName());
   RemoteDeviceDiscovery systembt;
   String MAC;
   boolean paired;
@@ -104,8 +102,15 @@ public class BitReader  extends Thread {
   BITalinoDevice device;
   BITalinoFrame[] lastread;
   boolean keepGoing;
+  int rate;
 
   public BitReader () {
+    this(100);
+//final int samplerate = 100;
+  }  
+    
+  public BitReader (int sampleRate) {
+    rate = sampleRate;
     paired = false;
     open = false;
     this.discover();
@@ -132,7 +137,8 @@ public class BitReader  extends Thread {
         systembt = null; // clear up old data
       }
 
-      final int samplerate = 100;
+      //final int samplerate = 100;
+      int samplerate = rate;
       final int [] analogs = new int[]{0, 1}; // 0 is EMG, 1 is ECG
       //analogs = [0,1,2,3,4,5];
       device = new BITalinoDevice(samplerate, analogs);
@@ -204,14 +210,46 @@ public class BitReader  extends Thread {
       while (keepGoing)
       {
         lastread = bit.read();
-        sleep(100);
+        sleep(rate);
       }
       
-      stop();
+      wait();
     }
     catch (Exception e)
     {
     }
+  }
+  
+  public float getECG() throws BitalinoUnreadyException{ //range 0-1 // this is a shitty way to scale this
+    // check the documentation for the API to find better ways to get this
+    float result;
+    
+    if(lastread == null) {
+      throw new BitalinoUnreadyException();
+    }
+    
+    if (lastread.length < 1) {
+      throw new BitalinoUnreadyException();
+    }
+    
+    result = lastread[0].getAnalog(1) / 1023;
+    return result;
+  }
+
+  public float getEMG() throws BitalinoUnreadyException{ //range 0-1 // this is a shitty way to scale this
+    // check the documentation for the API to find better ways to get this
+    float result;
+    
+    if(lastread == null) {
+      throw new BitalinoUnreadyException();
+    }
+    
+    if (lastread.length < 1) {
+      throw new BitalinoUnreadyException();
+    }
+    
+    result = lastread[0].getAnalog(0) / 1023;
+    return result;
   }
 
 

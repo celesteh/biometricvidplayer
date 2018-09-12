@@ -7,31 +7,31 @@ import java.io.File;
 
 public class FilmSwitcher /*extends PApplet*/ {
 
-  BitReader bit;
+  //BitReader bit;
   //FilmClip mainFilm;
   Movie mainFilm;
   Vector allClips;
   PApplet parent;
   //FilmClip active;
   Movie active;
+  Movie lastClip;
   Enumeration clips;
   boolean playing;
   int count;
 
-  public FilmSwitcher(PApplet app, String path, BitReader bitalino) {
+  public FilmSwitcher(PApplet app, String path/*, BitReader bitalino*/) {
 
     parent = app;
     mainFilm = 
       //new FilmClip(new Movie(parent, path), app.width, app.height);
       new Movie(parent, path);
     //new FilmClip(new Movie(parent, path), app.width, app.height);
-    bit = bitalino;
+    //bit = bitalino;
     active = mainFilm;
     mainFilm.loop();
     playing = false;
     count = 0;
     allClips = new Vector();
-    clips = allClips.elements();
   }
 
   public void addClip(Movie newClip) {
@@ -120,29 +120,58 @@ public class FilmSwitcher /*extends PApplet*/ {
     }
   }
 
+  private Movie getNextClip() {
+    Movie clip;
+
+    if (clips == null) {
+      Collections.shuffle(allClips);
+      clips = allClips.elements();
+    }
+    if (! clips.hasMoreElements()) {
+      Collections.shuffle(allClips);
+      clips = allClips.elements();
+    }
+    clip = (Movie) clips.nextElement();
+
+    if((clip == lastClip) && (allClips.size() > 1)) {
+      clip = getNextClip();
+    }
+
+    return clip;
+  }
+
   public void change() {
 
     Movie clip;
+    Movie previous;
 
-    if (! clips.hasMoreElements()) {
-      clips = allClips.elements();
-    }
+    //System.out.println("in change");
 
-    clip = (Movie) clips.nextElement();
+    clip = getNextClip();
     if (clip != null) {
+      previous = active;
       active = clip;
       //active.speed(1.0);
       //active.play();
       if (playing) {
-        play();
+        if ( active != mainFilm) {
+          lastClip = active;
+          play();
+        }
+        if (previous != mainFilm) {
+          System.out.println("Should stop");
+          //previous.stop();
+          previous.pause();
+        }
       }
     }
   }
 
   public void play() {
-    System.out.println("switcher play");
+    //System.out.println("switcher play");
     playing = true;
-    active.play();
+    //active.play();
+    active.loop();
     active.speed(1.0);
   }
 
