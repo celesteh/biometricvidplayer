@@ -7,7 +7,7 @@ FilmSwitcher myMovie;
 double start_time;
 double last_change;
 float jumpProbability;
-BreakPoint[] breakpoints;
+//BreakPoint[] breakpoints;
 BiometricController controller;
 BreakPoint last, next;
 
@@ -31,29 +31,32 @@ void setup() {
   background(0);
   last_change = 0;
 
-  breakpoints = new BreakPoint[0];
+  //breakpoints = new BreakPoint[0];
 
   controller = new BiometricController(this, dataPath("")+"/biometric.properties");
   jumpProbability = 0;
+  /*
   last = controller.getFirstBreakPoint();
-  if (last != null) {
-    if (last.getTime() > 0) {
-      next = last;
-      last = new BreakPoint(0, 0);
-    } else {
-      jumpProbability = last.getValue();
-      try {
-        next = controller.getNextBreakPoint(0);
-
-        System.out.println("last " + last.getTime() + ":" + last.getValue() + " next " + next.getTime() + ":" + next.getValue());
-      } 
-      catch (Exception e) {
-      }
-    }
-  } else {
-    // set up a dummy one anyway to simplify test conditions later
-    last = new BreakPoint(0, 0);
-  }
+   if (last != null) {
+   if (last.getTime() > 0) {
+   next = last;
+   last = new BreakPoint(0, 0);
+   } else {
+   jumpProbability = last.getValue();
+   try {
+   next = controller.getNextBreakPoint(0);
+   
+   System.out.println("last " + last.getTime() + ":" + last.getValue() + " next " + next.getTime() + ":" + next.getValue());
+   } 
+   catch (Exception e) {
+   }
+   }
+   
+   } else {
+   // set up a dummy one anyway to simplify test conditions later
+   last = new BreakPoint(0, 0);
+   }
+   */
   rand = new Random();
 
 
@@ -90,24 +93,26 @@ void setup() {
   String film;
   try {
     film = controller.getSetting("film");
-  } catch (Exception e) {
+  } 
+  catch (Exception e) {
     film = "DRAFT_JERWOOD_04.09.18.mp4";
   }
-  
+
   System.out.println(film);
 
   myMovie = new FilmSwitcher(this, film/*, bit*/);
   myMovie.loadClips(dataPath("")+"/clips");
 
-  frameRate(24);
+  frameRate(24); // was 24
   //myMovie.play();
   //bit.shouldStop();
 
+
   // just for testing
   //fadeIn();
-  
-    this.setupBitalino();
 
+  this.setupBitalino();
+  start_time = System.currentTimeMillis(); // duplicated later because
 }
 
 void draw() {
@@ -124,16 +129,24 @@ void draw() {
   //tint(255, alpha); rgb
   tint(alpha);
 
-  if (alpha > 0) {
-    if (myMovie.isPlaying()) {
-      myMovie.read();
-      if (runFullScreen) {
-        image(myMovie.getImage(), 0, 0, w, h);
-      } else {
-        image(myMovie.getImage(), 0, 0);
+  try {
+    if (alpha > 0) {
+      if (myMovie.isPlaying()) {
+        myMovie.read();
+        if (runFullScreen) {
+          image(myMovie.getImage(), 0, 0, w, h);
+          //System.out.println("fullscreen");
+        } else {
+          image(myMovie.getImage(), 0, 0);
+          //System.out.println("not fullscreen");
+        }
+        //image(myMovie.getImage(), 0, 0, w, h);
       }
-      //image(myMovie.getImage(), 0, 0, w, h);
     }
+  } 
+  catch (Exception e) {
+    System.out.println(e);
+    e.printStackTrace();
   }
 }
 
@@ -141,9 +154,15 @@ void update() {
 
   // do fade
   doFade();
-
-  if (shouldChange()) {
-    myMovie.change();
+  try {
+    if (alpha >= 1) {
+      if (shouldChange()) {
+        myMovie.change();
+      }
+    }
+  } catch (Exception e) {
+    System.out.println("Caucght exception on change " + e);
+    myMovie.resumeMain();
   }
 }
 
@@ -156,7 +175,9 @@ void movieEvent(Movie m) {
  */
 
 boolean shouldChange() {
+
   boolean doIt = false;
+  double time;
   float ecg, emg, probability;
 
 
@@ -165,36 +186,44 @@ boolean shouldChange() {
     emg = bit.getEMG();
   } 
   catch (Exception e) {
-    ecg = emg = 0;
+    System.out.println("bit failed");
+    ecg = emg = 1;
   }
 
   if (alive) {
+    /*
     if (next != null) {
-      if (! next.isFuture())
-        last = next;
-      try {
-        next = controller.getNextBreakPoint(last.currentTime());
-        next.setStart(start_time);
-      } 
-      catch (Exception e) {
-      }
-    }
-    if (next != null) {
-      jumpProbability = last.currentValue(next);
-    }
+     if (! next.isFuture())
+     last = next;
+     try {
+     next = controller.getNextBreakPoint(last.currentTime());
+     next.setStart(start_time);
+     } 
+     catch (Exception e) {
+     }
+     }
+     if (next != null) {
+     jumpProbability = last.currentValue(next);
+     }
+     */
+    time = getElapsedTime();
+    //System.out.println("time " + time + " start_time " + start_time);
+    jumpProbability = controller.getProbabilityAt(time);
 
-    if ( (getElapsedTime() - last_change) > jumpPause) {
+    if ( (time - last_change) > controller.getPauseAt(time)) {
       probability = ecg * emg * jumpProbability;
-      System.out.println("probability " + probability);
-      if (rand.nextFloat() <= probability) { 
+      //System.out.println("probability " + probability+ " " + ecg + " " + emg + " time " + time);
+      if (rand.nextFloat() <= (probability/48)) { // 2 second window size
         System.out.println("Switch!");
-        last_change = getElapsedTime();
+        last_change = time;//getElapsedTime();
         doIt = true;
       }
     }
   }
 
   return doIt;
+
+  //return rand.nextBoolean();
 }
 
 void doFade() {
@@ -214,10 +243,13 @@ void doFade() {
 void fadeIn() {
 
   start_time = System.currentTimeMillis();
+  System.out.println("star_time " + start_time);
+  /*
   last.setStart(start_time);
-  if (next != null) { 
-    next.setStart(start_time);
-  }
+   if (next != null) { 
+   next.setStart(start_time);
+   }
+   */
   myMovie.play();
   alive = true;
 }
@@ -226,7 +258,10 @@ void fadeOut() {
   alive = false;
   try {
     bit.shouldStop();
-  } catch (Exception e) {}
+  } 
+  catch (Exception e) {
+    System.out.println("fade out " + e);
+  }
 }
 
 void keyPressed() {
@@ -373,12 +408,35 @@ public class BreakPoint implements Comparable<BreakPoint> {
 
     float current, numerator, ratio, result=value;
     current = ((float)currentTime() );
+    /*
     numerator = ((float)(current - time));
-    if ( numerator <= 0) {
+     if ( numerator <= 0) {
+     //ratio = 0;
+     result = getValue();
+     } else {
+     if (current >= secondPoint.getTime()) {
+     //ratio =1;
+     result = secondPoint.getValue();
+     } else {
+     ratio = (float) (numerator / timeDistance(secondPoint)); 
+     result = lerp(value, secondPoint.getValue(), ratio);
+     }
+     */
+    return valueAt(secondPoint, current);
+  }
+
+  public float valueAt(BreakPoint secondPoint, double when) {
+
+    float current, numerator, ratio, result=value;
+    //current = time;//((float)currentTime() );
+    //numerator = ((float)(current - time));
+    ratio = -1;
+    numerator = (float) (when - time);
+    if ( when <= time) {
       //ratio = 0;
       result = getValue();
     } else {
-      if (current >= secondPoint.getTime()) {
+      if (when >= secondPoint.getTime()) {
         //ratio =1;
         result = secondPoint.getValue();
       } else {
@@ -386,8 +444,8 @@ public class BreakPoint implements Comparable<BreakPoint> {
         result = lerp(value, secondPoint.getValue(), ratio);
       }
     }
-
-
+    //System.out.println("when " + when + " time " + time + " second " + secondPoint.getTime());
+    //System.out.println("ratio " + ratio + " result " + result);
 
     return result;
   }

@@ -11,13 +11,16 @@ public class FilmSwitcher /*extends PApplet*/ {
   //FilmClip mainFilm;
   Movie mainFilm;
   Vector allClips;
+  Vector allClipsAndMain;
   PApplet parent;
   //FilmClip active;
   Movie active;
   Movie lastClip;
   Enumeration clips;
+  Enumeration clipsAndMain;
   boolean playing;
   int count;
+  double last_change;
 
   public FilmSwitcher(PApplet app, String path/*, BitReader bitalino*/) {
 
@@ -28,14 +31,17 @@ public class FilmSwitcher /*extends PApplet*/ {
     //new FilmClip(new Movie(parent, path), app.width, app.height);
     //bit = bitalino;
     active = mainFilm;
-    mainFilm.loop();
+    //mainFilm.loop();
     playing = false;
     count = 0;
     allClips = new Vector();
+    allClipsAndMain = new Vector();
+    allClipsAndMain.addElement(mainFilm);
   }
 
   public void addClip(Movie newClip) {
     allClips.addElement(newClip);
+    allClipsAndMain.addElement(newClip);
   }
 
   public void addClip(String path) {
@@ -74,6 +80,11 @@ public class FilmSwitcher /*extends PApplet*/ {
     }
   }
 
+  public void resumeMain() {
+    active =mainFilm;
+    active.loop();
+  }
+
   public Movie getActive() {
     active.speed(1.0);
     //return active.getFilm();
@@ -101,6 +112,19 @@ public class FilmSwitcher /*extends PApplet*/ {
      }
      count = (count + 1) % 5;
      */
+
+    /* should we go back to the main film ? */
+    if (active != mainFilm) {
+      double time_now = System.currentTimeMillis();
+      double elapsed = time_now - last_change;
+      if ((elapsed / 1000) > active.duration()) { // switch back
+        Movie previous = active;
+        last_change = time_now;
+        active = mainFilm;
+        previous.pause();
+      }
+    }
+
     if (active.available()) {
       //System.out.println("Available");
       active.read();
@@ -123,17 +147,29 @@ public class FilmSwitcher /*extends PApplet*/ {
   private Movie getNextClip() {
     Movie clip;
 
-    if (clips == null) {
-      Collections.shuffle(allClips);
-      clips = allClips.elements();
-    }
-    if (! clips.hasMoreElements()) {
-      Collections.shuffle(allClips);
-      clips = allClips.elements();
-    }
-    clip = (Movie) clips.nextElement();
+    if (active == mainFilm) { // only pick from clips
+      if (clips == null) {
+        Collections.shuffle(allClips);
+        clips = allClips.elements();
+      }
+      if (! clips.hasMoreElements()) {
+        Collections.shuffle(allClips);
+        clips = allClips.elements();
+      }
+      clip = (Movie) clips.nextElement();
+    } else { // could go back to main
+      if (clipsAndMain == null) {
 
-    if((clip == lastClip) && (allClips.size() > 1)) {
+        Collections.shuffle(allClipsAndMain);
+        clipsAndMain = allClipsAndMain.elements();
+      }
+      if (! clipsAndMain.hasMoreElements()) {
+        Collections.shuffle(allClipsAndMain);
+        clipsAndMain = allClipsAndMain.elements();
+      }
+      clip = (Movie) clipsAndMain.nextElement();
+    }
+    if (((clip == lastClip) || (clip == active)) && (allClips.size() > 1)) {
       clip = getNextClip();
     }
 
@@ -149,6 +185,8 @@ public class FilmSwitcher /*extends PApplet*/ {
 
     clip = getNextClip();
     if (clip != null) {
+
+      last_change = System.currentTimeMillis();
       previous = active;
       active = clip;
       //active.speed(1.0);

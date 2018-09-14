@@ -103,12 +103,14 @@ public class BitReader  extends Thread {
   BITalinoFrame[] lastread;
   boolean keepGoing;
   int rate;
+  float ecg;
+  float emg;
 
   public BitReader () {
     this(100);
-//final int samplerate = 100;
+    //final int samplerate = 100;
   }  
-    
+
   public BitReader (int sampleRate) {
     rate = sampleRate;
     paired = false;
@@ -204,52 +206,73 @@ public class BitReader  extends Thread {
   }
 
   public void run () {
+    BITalinoFrame[] framearr;
 
     try {
       sleep(500);
       while (keepGoing)
       {
-        lastread = bit.read();
-        sleep(rate);
+        framearr = bit.read();
+        if (framearr[0].getAnalog(0) != 0) {
+          emg = (((float) framearr[0].getAnalog(0)) / 1023);
+        }
+
+        if (framearr[0].getAnalog(1) != 0) {
+          ecg = (((float) framearr[0].getAnalog(1)) / 1023);
+        }
+        lastread = framearr;
+
+        System.out.println("lastread " + lastread[0]);
+        sleep(500);
       }
-      
+
       wait();
     }
     catch (Exception e)
     {
+      System.out.println("couldn't read");
     }
-  }
-  
-  public float getECG() throws BitalinoUnreadyException{ //range 0-1 // this is a shitty way to scale this
-    // check the documentation for the API to find better ways to get this
-    float result;
-    
-    if(lastread == null) {
-      throw new BitalinoUnreadyException();
-    }
-    
-    if (lastread.length < 1) {
-      throw new BitalinoUnreadyException();
-    }
-    
-    result = lastread[0].getAnalog(1) / 1023;
-    return result;
   }
 
-  public float getEMG() throws BitalinoUnreadyException{ //range 0-1 // this is a shitty way to scale this
+  public float getECG() throws BitalinoUnreadyException { //range 0-1 // this is a shitty way to scale this
     // check the documentation for the API to find better ways to get this
     float result;
-    
-    if(lastread == null) {
+
+    if (lastread == null) {
+      System.out.println("ECG null");
+      start();
+      /*
+      try {
+       lastread = read();
+       } 
+       catch (Exception e) {
+       }
+       */
       throw new BitalinoUnreadyException();
     }
-    
+
+    if (lastread.length < 1) {
+      System.out.println("No ECG frames");
+      throw new BitalinoUnreadyException();
+    }
+
+    return ecg;
+  }
+
+  public float getEMG() throws BitalinoUnreadyException { //range 0-1 // this is a shitty way to scale this
+    // check the documentation for the API to find better ways to get this
+    float result;
+
+    if (lastread == null) {
+      throw new BitalinoUnreadyException();
+    }
+
     if (lastread.length < 1) {
       throw new BitalinoUnreadyException();
     }
-    
+
     result = lastread[0].getAnalog(0) / 1023;
-    return result;
+    return emg;
   }
 
 

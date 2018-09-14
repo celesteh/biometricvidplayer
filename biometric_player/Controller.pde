@@ -31,15 +31,17 @@ public class BiometricController {
   Properties prop;
   String path;
   biometric_player app;
-  int breakcounter;
-  Vector breakPoints;
+  //Vector breakPoints;
+  BreakPointWrangler probabilities, pauses;
   ControllerPanel gui;
 
   public BiometricController(biometric_player owner) {
     app = owner;
     prop = new Properties();
-    breakcounter = 0;
-    breakPoints = new Vector(2);
+    //breakcounter = 0;
+    //breakPoints = new Vector(2);
+    probabilities = new BreakPointWrangler("prob", this);
+    pauses = new BreakPointWrangler("pause", this);
     gui = new ControllerPanel(this);
   }
 
@@ -74,7 +76,11 @@ public class BiometricController {
     }
     //Date time = new Date(System.currentTimeMillis());
 
-    breakPoints = new Vector(Arrays.asList(loadBreakPoints()));
+    //breakPoints = new Vector(Arrays.asList(loadBreakPoints()));
+    loadBreakPoints();
+
+    probabilities.audit();
+    pauses.audit();
   }
 
   public void write() {
@@ -104,85 +110,178 @@ public class BiometricController {
   public void stop() {
     app.fadeOut();
   }
-  
+
   public void ready() {
-    
+
     gui.ready();
   }
 
-  public BreakPoint[] loadBreakPoints() {
-    String key;
+  public /*BreakPoint[]*/ void loadBreakPoints() {
+    String tag;
     Enumeration allNames;
     Vector keys = new Vector(2);
     //String[] keyarr;
     boolean newpoints;
-    BreakPoint[] pointarr;
+    //BreakPoint[] pointarr;
+    BreakPoint point;
 
     allNames = prop.propertyNames();
     while (allNames.hasMoreElements()) {
-      key = (String) allNames.nextElement();
-      System.out.println(key);
-      if (key.startsWith("break")) {
-        keys.add(key);
+      tag = (String) allNames.nextElement();
+      System.out.println(tag + " " + prop.getProperty(tag));
+      if (tag.startsWith("bp")) {
+        //keys.add(tag);
+        point = new BreakPoint(prop.getProperty(tag));
+        System.out.println("new point " + prop.getProperty(tag) + " " + tag + " point " + point);
+        probabilities.addBreakPoint(point, tag);
+        pauses.addBreakPoint(point, tag);
       }
     }
 
+    prop.list(System.out);
 
+    /*
     newpoints = false;
-    if (breakPoints == null) { 
-      newpoints = true;
-    } else { 
-      if (breakPoints.size() == 0) {
-        newpoints = true;
-      }
-    }
-    if (newpoints) {
-      breakPoints = new Vector(keys.size()+2);
-    }
-
-    pointarr = new BreakPoint[keys.size()];
-
-
-    //if(keys.size() > 0){
-    //keyarr = new String[keys.size()];
-
+     if (breakPoints == null) { 
+     newpoints = true;
+     } else { 
+     if (breakPoints.size() == 0) {
+     newpoints = true;
+     }
+     }
+     if (newpoints) {
+     breakPoints = new Vector(keys.size()+2);
+     }
+     
+     pointarr = new BreakPoint[keys.size()];
+     
+     
+     //if(keys.size() > 0){
+     //keyarr = new String[keys.size()];
+     
+     for (int i =0; i < keys.size(); i++) {
+     pointarr[i] = new BreakPoint(prop.getProperty((String) keys.elementAt(i)));
+     }
+     
+     Arrays.sort(pointarr);
+     
+     return pointarr;
+     */    /*
     for (int i =0; i < keys.size(); i++) {
-      pointarr[i] = new BreakPoint(prop.getProperty((String) keys.elementAt(i)));
-    }
+     tag = (String) keys.elementAt(i);
+     point = new BreakPoint(prop.getProperty(tag));
+     System.out.println("new point " + prop.getProperty(tag) + " " + tag + " point " + point);
+     probabilities.addBreakPoint(point, tag);
+     pauses.addBreakPoint(point, tag);
+     }*/
+  }
+  /*
+  public void addBreakPoint(BreakPoint point) {
+   String key;
+   int size = breakPoints.size();
+   
+   breakPoints.add(point);
+   Collections.sort(breakPoints);
+   
+   key = "break"+size;
+   this.setSetting(key, point.toString());
+   }
+   */
 
-    Arrays.sort(pointarr);
+  public BreakPointWrangler getPausePoints() {
+    return pauses;
+  }
 
-    return pointarr;
+  public BreakPointWrangler getprobabilityPoints() {
+    return probabilities;
+  }
+
+  public double getPauseAt(double time) {
+    return pauses.valueAt(time);
+  }
+
+  public float getProbabilityAt(double time) {
+    return probabilities.valueAt(time);
+  }
+
+  public void setStart(double time) {
+    // probably not needed
+  }
+}
+
+public class BreakPointWrangler {
+  String key;
+  Vector breakPoints;
+  BiometricController parent;
+  BreakPoint last, next;
+
+  public BreakPointWrangler(String name_match, BiometricController controller) {
+    key = name_match;
+    breakPoints = new Vector();
+    parent = controller;
+  }
+
+  public String getKey() {
+    return key;
   }
 
   public void addBreakPoint(BreakPoint point) {
-    String key;
+    String tag;
     int size = breakPoints.size();
 
     breakPoints.add(point);
     Collections.sort(breakPoints);
 
-    key = "break"+size;
-    this.setSetting(key, point.toString());
+    tag = "break/"+key+ "/" +size;
+    parent.setSetting(tag, point.toString());
+    last = null;
+    next = null;
+  }
+
+  public boolean addBreakPoint(BreakPoint point, String name) {
+    String bp, type;
+    int num;
+    boolean match;
+    String[] parts = name.split("/");
+    bp = parts[0];
+    type = parts[1];
+    match = type.equals(key);
+    num = Integer.parseInt(parts[2]);
+
+    if (match) {
+      System.out.println("bp " + name + " " + parts[1] /*+ " - " + parts[1]*/);
+      addBreakPoint(point);
+    }
+
+    return match;
+  }
+
+  public void audit() {
+    for (int i = 0; i < breakPoints.size(); i++) {
+      System.out.println(""+ i + " " + (BreakPoint) breakPoints.elementAt(i));
+    }
   }
 
   public BreakPoint getNextBreakPoint(double time) throws noFutureBreakPointsException {
+    /*
     boolean found;
-    BreakPoint point = null;
-    double pointTime;
-    found = false;
-
-    for (int i = 0; (i < breakPoints.size()) && (! found); i++) {
-      point = (BreakPoint) breakPoints.elementAt(i);
-      pointTime = point.getTime();
-      found = (pointTime > time);
-    }
-
-    if (! found) {
-      point = null;
-      throw new noFutureBreakPointsException();
-    }
-    return point;
+     BreakPoint point = null;
+     double pointTime;
+     found = false;
+     
+     for (int i = 0; (i < breakPoints.size()) && (! found); i++) {
+     point = (BreakPoint) breakPoints.elementAt(i);
+     pointTime = point.getTime();
+     found = (pointTime > time);
+     }
+     
+     if (! found) {
+     point = null;
+     throw new noFutureBreakPointsException();
+     }
+     return point;
+     */
+    return getPointsAround(time)[1];
   }
 
   public BreakPoint getFirstBreakPoint() {
@@ -197,25 +296,115 @@ public class BiometricController {
     //}
     return point;
   }
+
+  public BreakPoint getLastBreakPoint() {
+    BreakPoint point = null;
+    int size;
+
+    size = breakPoints.size();
+    if (size > 0) {
+      point = (BreakPoint) breakPoints.elementAt(size - 1);
+    }
+
+    return point;
+  }
+
+  public BreakPoint[] getPointsAround(double time) throws noFutureBreakPointsException {
+    boolean found;
+    BreakPoint prev = null;
+    BreakPoint point = null;
+    double pointTime;
+    found = false;
+    BreakPoint[] arr;
+    int index=0;
+
+    for (int i = 0; (i < breakPoints.size()) && (! found); i++) {
+      index = 1;
+      prev = point;
+      point = (BreakPoint) breakPoints.elementAt(i);
+      pointTime = point.getTime();
+      System.out.println("Searching " + pointTime);
+      found = (pointTime > time);
+    }
+
+    if (! found) {
+      point = null;
+      System.out.println("Not found");
+      throw new noFutureBreakPointsException();
+    } else if (prev == null) {
+      prev = point;
+    } else if (prev.getTime() == point.getTime()) {
+      if (index >= 1) {
+        prev = (BreakPoint) breakPoints.elementAt(index -1);
+      }
+    }
+
+    arr = new BreakPoint[2];
+    arr[0] = prev;
+    arr[1] = point;
+    return arr; //new BreakPoint[]{last, point};
+  }
+
+  public float valueAt(double time) {
+    BreakPoint[] arr;
+    //BreakPoint first, second;
+    float value=0;
+    boolean getPoints = false;
+    boolean calcValue = true;
+
+    if (last == null || next ==null) {
+      getPoints = true;
+    } else if (time > next.getTime()) {
+      getPoints = true;
+    }
+
+    if (getPoints) {
+      System.out.println("Recalculating points");
+      try {
+        arr = this.getPointsAround(time);
+        last = arr[0]; 
+        next = arr[1];
+      } 
+      catch (noFutureBreakPointsException e) {
+        last = getLastBreakPoint();
+        calcValue = false;
+        if ( last != null) {
+          value = last.getValue();
+        } else {
+          value = 0;
+        }
+      }
+    }
+    if (calcValue) {
+      //System.out.println(" last, next " + last + " " + next);
+      value = last.valueAt(next, time);
+    }
+
+    //System.out.println("time is " + time);
+
+    return value;
+  }
 }
 
 
-public class ControllerPanel extends JFrame {
+public class ControllerPanel extends JFrame implements ActionListener{
 
   BiometricController parent;
   JButton startbutton;
   JButton stopbutton;
 
   public ControllerPanel(BiometricController controller) {
-    
+
     System.out.println("gui constructor");
     parent = controller;
     startbutton = new JButton("Start");
     startbutton.setActionCommand("start");
     startbutton.setEnabled(false);
-   stopbutton = new JButton("Stop");
+    startbutton.addActionListener(this);
+    stopbutton = new JButton("Stop");
     stopbutton.setActionCommand("stop");
     stopbutton.setEnabled(false);
+    stopbutton.addActionListener(this);
 
     JPanel newPanel = new JPanel(new GridBagLayout());
 
@@ -252,13 +441,14 @@ public class ControllerPanel extends JFrame {
     startbutton.setEnabled(true);
     stopbutton.setEnabled(false);
   }
-  
+
   public void ready() {
     stop();
   }
 
   public void actionPerformed(ActionEvent e) {
-    if ("play".equals(e.getActionCommand())) {
+    System.out.println("Action! " + e.getActionCommand());
+    if ("start".equals(e.getActionCommand())) {
       parent.start();
       play();
     } else {
